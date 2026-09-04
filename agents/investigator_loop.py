@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from agents.claim_extractor import extract_claims
+from agents.claim_matcher import match_claims
 from agents.verifier import verify_claims
 from agents.contradiction_detector import detect_contradictions
 from agents.verification_planner import create_verification_tasks
@@ -123,7 +124,10 @@ def run_scrape_phase(state: InvestigationState) -> InvestigationState:
 def run_extraction_phase(
     state: InvestigationState,
 ) -> InvestigationState:
-    """Extract claims, verify them, detect contradictions, and create follow-up tasks."""
+    """
+    Extract claims, match similar claims, verify them,
+    detect contradictions, and create follow-up tasks.
+    """
 
     investigation = Investigation(
         query=state.original_question,
@@ -131,16 +135,19 @@ def run_extraction_phase(
         claims=state.claims,
     )
 
-    # Extract candidate claims from scraped source content.
+    # Step 1: Extract candidate claims from scraped source content.
     investigation = extract_claims(investigation)
 
-    # Verify claims using supporting/contradicting source counts.
+    # Step 2: Match similar claims across independent sources.
+    investigation = match_claims(investigation)
+
+    # Step 3: Verify claims using supporting and contradicting source counts.
     investigation = verify_claims(investigation)
 
-    # Detect opposing claims across different sources.
+    # Step 4: Detect opposing claims across different sources.
     investigation = detect_contradictions(investigation)
 
-    # Create targeted follow-up tasks for contested claims.
+    # Step 5: Create targeted follow-up tasks for contested claims.
     verification_tasks = create_verification_tasks(investigation)
 
     state.claims = investigation.claims
@@ -162,8 +169,14 @@ def investigate_loop(state: InvestigationState) -> InvestigationState:
     Run one complete ARGUS investigation pass.
 
     Pipeline:
-        Search → Select Sources → Scrape → Extract Claims
-        → Verify → Detect Contradictions → Create Verification Tasks
+        Search
+        → Select Sources
+        → Scrape
+        → Extract Claims
+        → Match Similar Claims
+        → Verify
+        → Detect Contradictions
+        → Create Verification Tasks
     """
 
     state = run_search_phase(state)
