@@ -27,15 +27,30 @@ def main():
     print("Search queries:", len(state.search_queries))
     print()
 
-    print("Running: Search -> Select -> Scrape -> Extract -> Verify")
+    print(
+        "Running: Search -> Select -> Scrape -> "
+        "Extract -> Verify -> Detect Contradictions -> "
+        "Create Verification Tasks"
+    )
     print()
 
     state = investigate_loop(state)
 
     print("=== RESULTS ===")
     print("Sources found:", len(state.sources))
-    print("Sources scraped:", state.usage_stats.get("sources_scraped", 0))
+    print(
+        "Sources scraped:",
+        state.usage_stats.get("sources_scraped", 0),
+    )
     print("Claims extracted:", len(state.claims))
+    print(
+        "Contradictions detected:",
+        state.usage_stats.get("contradictions_detected", 0),
+    )
+    print(
+        "Verification tasks:",
+        state.usage_stats.get("verification_tasks_created", 0),
+    )
     print("Unresolved issues:", len(state.unresolved_questions))
     print()
 
@@ -54,8 +69,25 @@ def main():
         print(
             f"- {claim.status.value} | "
             f"confidence={claim.confidence} | "
-            f"{claim.statement}"
+            f"contested={claim.is_contested}"
         )
+        print(f"  {claim.statement}")
+
+        if claim.contradicting_sources:
+            print(
+                f"  Contradicting sources: "
+                f"{claim.contradicting_sources}"
+            )
+
+        print()
+
+    print("=== VERIFICATION TASKS ===")
+
+    if state.verification_tasks:
+        for task in state.verification_tasks:
+            print("-", task)
+    else:
+        print("No verification tasks created.")
 
     print()
     print("=== USAGE ===")

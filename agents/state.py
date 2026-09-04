@@ -53,11 +53,18 @@ class InvestigationState:
         if claim.id not in existing_ids:
             self.claims.append(claim)
 
+    def add_verification_task(self, task: str) -> None:
+        """Add a verification task if it does not already exist."""
+
+        if task not in self.verification_tasks:
+            self.verification_tasks.append(task)
+
     def summary(self) -> Dict[str, Any]:
         """Return a compact snapshot of investigation progress."""
 
         scraped_sources = sum(
-            1 for source in self.sources
+            1
+            for source in self.sources
             if source.has_content
         )
 
@@ -68,5 +75,6 @@ class InvestigationState:
             "claims": len(self.claims),
             "contradictions": len(self.contradictions),
             "unresolved_questions": len(self.unresolved_questions),
+            "verification_tasks": len(self.verification_tasks),
             "confidence": self.confidence,
         }

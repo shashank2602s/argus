@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 
 from agents.claim_extractor import extract_claims
 from agents.verifier import verify_claims
+from agents.contradiction_detector import detect_contradictions
+from agents.verification_planner import create_verification_tasks
 from agents.state import InvestigationState
+from models.investigation import Investigation
 from models.sources import Source
 from tools.anakin_search import search_web
 from tools.anakin_scraper import scrape_urls
@@ -22,7 +25,6 @@ def _select_sources(
     selected = []
     domain_counts = {}
 
-    # Higher relevance first.
     ranked_sources = sorted(
         sources,
         key=lambda source: source.relevance_score,
@@ -121,35 +123,36 @@ def run_scrape_phase(state: InvestigationState) -> InvestigationState:
 def run_extraction_phase(
     state: InvestigationState,
 ) -> InvestigationState:
-    """Extract and verify claims from scraped sources."""
+    """Extract claims, verify them, detect contradictions, and create follow-up tasks."""
 
-    # Reuse the existing deterministic claim extractor.
-    investigation = extract_claims(
-        type(
-            "InvestigationContainer",
-            (),
-            {
-                "sources": state.sources,
-                "claims": state.claims,
-            },
-        )()
+    investigation = Investigation(
+        query=state.original_question,
+        sources=state.sources,
+        claims=state.claims,
     )
+
+    # Extract candidate claims from scraped source content.
+    investigation = extract_claims(investigation)
+
+    # Verify claims using supporting/contradicting source counts.
+    investigation = verify_claims(investigation)
+
+    # Detect opposing claims across different sources.
+    investigation = detect_contradictions(investigation)
+
+    # Create targeted follow-up tasks for contested claims.
+    verification_tasks = create_verification_tasks(investigation)
 
     state.claims = investigation.claims
 
-    # Reuse the existing verifier.
-    investigation = verify_claims(
-        type(
-            "InvestigationContainer",
-            (),
-            {
-                "sources": state.sources,
-                "claims": state.claims,
-            },
-        )()
-    )
+    state.contradictions = [
+        claim.statement
+        for claim in state.claims
+        if claim.is_contested
+    ]
 
-    state.claims = investigation.claims
+    for task in verification_tasks:
+        state.add_verification_task(task)
 
     return state
 
@@ -159,25 +162,40 @@ def investigate_loop(state: InvestigationState) -> InvestigationState:
     Run one complete ARGUS investigation pass.
 
     Pipeline:
-        Search → Select Sources → Scrape → Extract Claims → Verify
+        Search → Select Sources → Scrape → Extract Claims
+        → Verify → Detect Contradictions → Create Verification Tasks
     """
 
     state = run_search_phase(state)
+
     state = run_scrape_phase(state)
+
     state = run_extraction_phase(state)
 
     state.usage_stats["search_queries"] = len(
         state.search_queries
     )
+
     state.usage_stats["sources_found"] = len(
         state.sources
     )
+
     state.usage_stats["sources_scraped"] = sum(
-        1 for source in state.sources
+        1
+        for source in state.sources
         if source.has_content
     )
+
     state.usage_stats["claims_extracted"] = len(
         state.claims
+    )
+
+    state.usage_stats["contradictions_detected"] = len(
+        state.contradictions
+    )
+
+    state.usage_stats["verification_tasks_created"] = len(
+        state.verification_tasks
     )
 
     return state
