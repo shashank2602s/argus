@@ -1,58 +1,95 @@
-from agents.contradiction_detector import detect_contradictions
-from models.claims import Claim, ClaimStatus
+from models.claims import Claim
 from models.investigation import Investigation
-from models.sources import Source
+from agents.contradiction_detector import detect_contradictions
 
 
-def main():
-    source_a = Source(
-        id="source-1",
-        url="https://example.com/source-a",
-        title="Source A",
-    )
-
-    source_b = Source(
-        id="source-2",
-        url="https://example.com/source-b",
-        title="Source B",
-    )
-
-    claim_a = Claim(
-        id="claim-1",
-        statement="Cybersecurity attacks increased significantly in 2026.",
-        source_ids=["source-1"],
-        supporting_sources=["source-1"],
-        status=ClaimStatus.SUPPORTED,
-    )
-
-    claim_b = Claim(
-        id="claim-2",
-        statement="Cybersecurity attacks decreased significantly in 2026.",
-        source_ids=["source-2"],
-        supporting_sources=["source-2"],
-        status=ClaimStatus.SUPPORTED,
-    )
-
+def run_test(name, claims, expected_contradictions):
     investigation = Investigation(
-        query="Did cybersecurity attacks increase or decrease in 2026?",
-        sources=[source_a, source_b],
-        claims=[claim_a, claim_b],
+        query=name,
+        claims=claims,
     )
 
-    investigation = detect_contradictions(investigation)
+    result = detect_contradictions(investigation)
 
-    print("=== CONTRADICTION DETECTOR TEST ===")
-    print()
+    contradiction_count = sum(
+        1
+        for claim in result.claims
+        if claim.contradicting_sources
+    )
 
-    for claim in investigation.claims:
-        print("Claim:", claim.statement)
-        print("Status:", claim.status.value)
-        print("Confidence:", claim.confidence)
-        print("Supporting:", claim.supporting_sources)
-        print("Contradicting:", claim.contradicting_sources)
-        print("Contested:", claim.is_contested)
-        print()
+    print(f"\n{name}")
+    print("-" * 60)
+    print(f"Expected claims with contradictions: {expected_contradictions}")
+    print(f"Actual claims with contradictions:   {contradiction_count}")
+
+    for claim in result.claims:
+        print(f"\nClaim: {claim.statement}")
+        print(f"Contradicting: {claim.contradicting_sources}")
+
+    if contradiction_count == expected_contradictions:
+        print("RESULT: PASS")
+    else:
+        print("RESULT: FAIL")
 
 
-if __name__ == "__main__":
-    main()
+# TEST 1: Opposing claims should be detected
+
+claim_1 = Claim(
+    id="claim-1",
+    statement="Cybersecurity risks are increasing in 2026.",
+    source_ids=["source-1"],
+)
+
+claim_2 = Claim(
+    id="claim-2",
+    statement="Cybersecurity risks are decreasing in 2026.",
+    source_ids=["source-2"],
+)
+
+run_test(
+    "TEST 1 - Contradicting claims",
+    [claim_1, claim_2],
+    expected_contradictions=2,
+)
+
+
+# TEST 2: Supporting claims should NOT be contradictions
+
+claim_3 = Claim(
+    id="claim-3",
+    statement="AI-driven cyberattacks are increasing in 2026.",
+    source_ids=["source-1"],
+)
+
+claim_4 = Claim(
+    id="claim-4",
+    statement="AI-powered cyberattacks are increasing this year.",
+    source_ids=["source-2"],
+)
+
+run_test(
+    "TEST 2 - Supporting claims",
+    [claim_3, claim_4],
+    expected_contradictions=0,
+)
+
+
+# TEST 3: Unrelated claims should NOT be contradictions
+
+claim_5 = Claim(
+    id="claim-5",
+    statement="Cybersecurity risks are increasing in 2026.",
+    source_ids=["source-1"],
+)
+
+claim_6 = Claim(
+    id="claim-6",
+    statement="Worldwide PC shipments grew by 9.1%.",
+    source_ids=["source-2"],
+)
+
+run_test(
+    "TEST 3 - Unrelated claims",
+    [claim_5, claim_6],
+    expected_contradictions=0,
+)
