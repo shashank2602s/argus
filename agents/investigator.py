@@ -4,9 +4,12 @@ from models.investigation import Investigation
 from models.sources import Source
 from tools.anakin_search import search_web
 from tools.anakin_scraper import scrape_urls
+from agents.claim_extractor import extract_claims
+from agents.verifier import verify_claims
 
 
 def investigate(query: str, limit: int = 5) -> Investigation:
+    # 1. Search the web
     results = search_web(query, limit=limit)
 
     sources = [
@@ -25,9 +28,13 @@ def investigate(query: str, limit: int = 5) -> Investigation:
         return Investigation(
             query=query,
             sources=[],
+            claims=[],
         )
 
-    scraped_pages = scrape_urls([source.url for source in sources])
+    # 2. Scrape the search results
+    scraped_pages = scrape_urls(
+        [source.url for source in sources]
+    )
 
     scraped_by_url = {
         page.url: page
@@ -43,7 +50,16 @@ def investigate(query: str, limit: int = 5) -> Investigation:
             if page.title:
                 source.title = page.title
 
-    return Investigation(
+    investigation = Investigation(
         query=query,
         sources=sources,
+        claims=[],
     )
+
+    # 3. Extract candidate factual claims
+    investigation = extract_claims(investigation)
+
+    # 4. Verify claims against available source evidence
+    investigation = verify_claims(investigation)
+
+    return investigation
