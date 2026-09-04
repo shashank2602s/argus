@@ -138,14 +138,14 @@ def run_extraction_phase(
     # Step 1: Extract candidate claims from scraped source content.
     investigation = extract_claims(investigation)
 
-    # Step 2: Match similar claims across independent sources.
+    # Step 2: Detect opposing claims across different sources.
+    investigation = detect_contradictions(investigation)
+
+    # Step 3: Match similar claims across independent sources.
     investigation = match_claims(investigation)
 
-    # Step 3: Verify claims using supporting and contradicting source counts.
+    # Step 4: Verify claims using supporting and contradicting source counts.
     investigation = verify_claims(investigation)
-
-    # Step 4: Detect opposing claims across different sources.
-    investigation = detect_contradictions(investigation)
 
     # Step 5: Create targeted follow-up tasks for contested claims.
     verification_tasks = create_verification_tasks(investigation)
