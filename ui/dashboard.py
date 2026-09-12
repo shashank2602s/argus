@@ -2,6 +2,11 @@ import traceback
 
 import streamlit as st
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from agents.evidence_graph import build_evidence_graph
 from agents.investigator_loop import investigate_loop
 from agents.state import InvestigationState
