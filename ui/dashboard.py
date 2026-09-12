@@ -489,7 +489,12 @@ if "investigation" in st.session_state:
 
         for claim in state.claims:
 
-            status_text = claim.status.value.upper()
+            # claim.status is normally a ClaimStatus Enum (has
+            # .value), but this also tolerates a plain string or
+            # None without changing behavior for the normal
+            # Enum-based pipeline.
+            _raw_status = getattr(claim.status, "value", claim.status)
+            status_text = (_raw_status or "unverified").upper()
             text_color, bg_color, border_color = _argus_status_colors(status_text)
 
             claim_preview = claim.statement
@@ -891,16 +896,34 @@ if "investigation" in st.session_state:
     ]
 
     # ------------------------------------------------------------
+    # DOT identifier safety
+    # ------------------------------------------------------------
+    # Node/edge ids coming from build_evidence_graph (e.g.
+    # "claim:<id>", "source:<id>") are not guaranteed to be made
+    # up of only DOT-safe characters. Rather than stripping/
+    # replacing specific characters (which can't cover every case
+    # and can cause different raw ids to collide), every id is
+    # wrapped as a quoted DOT identifier with internal backslashes
+    # and quotes escaped. Quoted DOT identifiers accept arbitrary
+    # text, so this is valid for any id value. The exact same
+    # function is used for node definitions and edge references so
+    # they always match.
+
+    def _dot_id(raw_id):
+        escaped = (
+            str(raw_id)
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+        )
+        return f'"{escaped}"'
+
+    # ------------------------------------------------------------
     # Nodes
     # ------------------------------------------------------------
 
     for node in graph["nodes"]:
 
-        node_id = (
-            node["id"]
-            .replace(":", "_")
-            .replace("-", "_")
-        )
+        node_id = _dot_id(node["id"])
 
         node_type = node["type"]
 
@@ -1061,17 +1084,9 @@ if "investigation" in st.session_state:
 
     for edge in graph["edges"]:
 
-        source = (
-            edge["source"]
-            .replace(":", "_")
-            .replace("-", "_")
-        )
+        source = _dot_id(edge["source"])
 
-        target = (
-            edge["target"]
-            .replace(":", "_")
-            .replace("-", "_")
-        )
+        target = _dot_id(edge["target"])
 
         edge_type = edge["type"]
 
