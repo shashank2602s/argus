@@ -1,236 +1,393 @@
-# ARGUS
+# 🔎 ARGUS
 
-## Adaptive Research & Grounded Understanding System
+### Adaptive Research & Grounded Understanding System
 
-ARGUS is a web-based evidence investigation system that helps users research questions using live web sources, extract factual claims, compare evidence across sources, detect contradictions, and assign evidence-based verification confidence.
+**ARGUS is a web-based evidence investigation system that turns open-web research into a traceable, evidence-backed investigation.**
 
-ARGUS is currently implemented as a deterministic evidence-processing pipeline and does not require an LLM for its core investigation workflow.
+Instead of simply generating an answer, ARGUS searches the live web, collects source material, extracts factual claims, compares claims across independent sources, detects potentially contradictory evidence, and assigns a deterministic verification status and confidence level.
 
----
-
-## What ARGUS Does
-
-Given a research question, ARGUS:
-
-1. Searches the live web using Anakin Search.
-2. Selects relevant sources while limiting excessive dependence on a single domain.
-3. Scrapes selected source pages using Anakin Scraper.
-4. Extracts candidate factual claims from the collected content.
-5. Detects potentially contradictory claims across independent sources.
-6. Matches similar claims across different sources.
-7. Consolidates evidence from matching sources.
-8. Assigns verification status and confidence based on supporting and contradicting evidence.
-9. Creates follow-up verification tasks for contested claims.
-10. Visualizes the investigation through a Streamlit dashboard and evidence graph.
+> **Search the web. Extract the evidence. Compare the claims. Verify the conclusion.**
 
 ---
 
-## Architecture
+## 🎯 Why ARGUS?
+
+Web research often produces a collection of links without making it easy to understand:
+
+* Which sources actually contain useful evidence?
+* Which claims are supported by multiple sources?
+* Do different sources disagree?
+* How strong is the available evidence?
+* Where did a particular conclusion come from?
+
+ARGUS addresses this by building an **evidence trail** from the original question all the way to the sources supporting or contradicting each claim.
+
+---
+
+## 🚀 What ARGUS Does
+
+Given a research question, ARGUS performs the following workflow:
 
 ```text
 User Question
-      |
-      v
-+-----------------+
-|  Anakin Search  |
-+--------+--------+
-         |
-         v
-+-----------------+
-| Source Selection|
-+--------+--------+
-         |
-         v
-+-----------------+
-| Anakin Scraper  |
-+--------+--------+
-         |
-         v
-+-----------------+
-| Claim Extraction|
-+--------+--------+
-         |
-         v
-+----------------------+
-| Contradiction        |
-| Detection            |
-+----------+-----------+
-           |
-           v
-+----------------------+
-| Cross-Source Claim   |
-| Matching             |
-+----------+-----------+
-           |
-           v
-+----------------------+
-| Evidence Verification|
-+----------+-----------+
-           |
-           v
-+----------------------+
-| Verification Tasks   |
-+----------+-----------+
-           |
-           v
-+----------------------+
-| Streamlit Dashboard  |
-| + Evidence Graph     |
-+----------------------+
+      ↓
+Anakin Search
+      ↓
+Source Selection
+      ↓
+Anakin Scraper
+      ↓
+Claim Extraction
+      ↓
+Contradiction Detection
+      ↓
+Cross-Source Claim Matching
+      ↓
+Evidence Verification
+      ↓
+Verification Tasks
+      ↓
+Streamlit Dashboard + Evidence Graph
 ```
+
+The result is not just an answer — it is an **inspectable evidence structure**.
 
 ---
 
-## Key Features
+## ✨ Key Features
 
-### Live Web Research
+### 🌐 Live Web Research
 
-ARGUS uses Anakin Search to discover current web sources relevant to the user's question.
+ARGUS uses **Anakin Search** to discover current web sources relevant to the investigation question.
 
-### Source Selection
+This allows investigations to work with live web information instead of relying on a static knowledge base.
 
-The investigation loop ranks discovered sources and limits the number of sources scraped from the same domain.
+---
 
-### Claim Extraction
+### 🎯 Source Selection
 
-ARGUS extracts candidate factual statements from scraped source content and associates them with their originating sources.
+ARGUS selects sources for investigation while limiting excessive dependence on a single domain.
 
-### Cross-Source Claim Matching
+This helps create a more diverse evidence set and makes cross-source comparison meaningful.
 
-Similar claims from different sources are matched using deterministic text and topic similarity.
+The investigation loop currently limits:
 
-The matcher uses:
+* Total scraped sources
+* Search results processed
+* Sources per domain
 
-* word normalization
-* stop-word filtering
-* topic grouping
-* word-based similarity
-* topic-based similarity
-* independent-source checking
-* evidence consolidation
+---
 
-### Contradiction Detection
+### 📄 Web Scraping
 
-ARGUS identifies potentially opposing claims by comparing:
+Selected sources are retrieved using **Anakin Scraper**.
 
-* whether claims discuss the same topic
-* predefined opposing language patterns
-* source independence
+ARGUS stores the source metadata and scraped content so that extracted claims can always be traced back to their originating source.
 
-Examples include:
+---
+
+### 🧩 Claim Extraction
+
+ARGUS identifies candidate factual statements from scraped source content.
+
+Each extracted claim maintains a relationship with its source, allowing the dashboard to display:
 
 ```text
-increasing <-> decreasing
-higher <-> lower
-more <-> less
-increase <-> decrease
-effective <-> ineffective
-confirmed <-> disputed
+Claim
+  ↓
+Evidence excerpt
+  ↓
+Original source
 ```
 
-### Evidence Verification
+This makes individual claims inspectable instead of treating an entire webpage as a single piece of evidence.
 
-Claims are assigned a verification status and confidence based on their supporting and contradicting evidence.
+---
 
-Current confidence model:
+### 🔗 Cross-Source Claim Matching
+
+ARGUS identifies similar claims appearing across independent sources.
+
+The deterministic matcher combines:
+
+* Word normalization
+* Stop-word filtering
+* Topic grouping
+* Word-based similarity
+* Topic-based similarity
+* Source independence checks
+* Evidence consolidation
+
+For example:
+
+```text
+Source A:
+"AI-enabled attacks affected 89% of companies."
+
+Source B:
+"Nearly nine in ten companies experienced AI-related attacks."
+
+             ↓
+
+       Matched evidence
+```
+
+Claims from the same source are not incorrectly treated as independent confirmation.
+
+---
+
+### ⚠️ Contradiction Detection
+
+ARGUS searches for potentially conflicting claims across sources.
+
+The detector considers:
+
+* Topic similarity
+* Opposing language patterns
+* Source independence
+
+Examples of opposing patterns include:
+
+```text
+increasing ↔ decreasing
+increase   ↔ decrease
+higher     ↔ lower
+more       ↔ less
+effective  ↔ ineffective
+confirmed  ↔ disputed
+```
+
+Contradicting evidence is preserved rather than silently discarded.
+
+---
+
+### 🔬 Evidence Verification
+
+ARGUS assigns a verification status and confidence level based on the available evidence.
+
+Current deterministic heuristic:
 
 | Evidence                            | Status              | Confidence |
 | ----------------------------------- | ------------------- | ---------: |
-| 0 supporting sources                | Unverified          |         0% |
+| No supporting sources               | Unverified          |         0% |
 | 1 supporting source                 | Supported           |        60% |
 | 2 supporting sources                | Supported           |        75% |
 | 3+ supporting sources               | Supported           |        90% |
 | Contradicting evidence dominates    | Contradicted        |     15–30% |
 | Supporting + contradicting evidence | Partially supported |     35–65% |
 
-These values are deterministic heuristics intended to communicate evidence strength. They are not statistical probabilities.
-
-### Verification Tasks
-
-When ARGUS detects a contested claim, it creates a follow-up task requesting additional independent evidence.
-
-### Evidence Graph
-
-ARGUS generates an evidence graph connecting investigations, claims, and sources.
-
-```text
-Investigation
-      |
-      v
-    Claims
-    /    \
-support  contradict
-  /          \
-Sources     Sources
-```
-
-This allows users to inspect which sources support or contradict each claim.
-
-### Streamlit Dashboard
-
-The dashboard provides an interactive interface for inspecting:
-
-* discovered sources
-* scraped evidence
-* extracted claims
-* verification status
-* confidence
-* contradictions
-* verification tasks
-* evidence relationships
+**Important:** These values are evidence-strength heuristics, not statistical probabilities.
 
 ---
 
-## Project Structure
+### 🔍 Verification Tasks
+
+When a claim contains contested or insufficient evidence, ARGUS can create a follow-up verification task requesting additional independent evidence.
+
+This allows the investigation to identify areas where the current evidence is not strong enough.
+
+---
+
+### 🕸️ Evidence Graph
+
+ARGUS generates an evidence graph showing how the investigation connects to claims and sources.
+
+```text
+                 Investigation
+                       │
+                       ▼
+                    Claims
+                  /        \
+             supports    contradicts
+               /              \
+              ▼                ▼
+           Sources           Sources
+```
+
+The graph makes the evidence chain visually inspectable:
+
+```text
+Question
+   ↓
+Claim
+   ↓
+Supporting / Contradicting Source
+```
+
+---
+
+### 📊 Streamlit Dashboard
+
+The interactive dashboard provides visibility into the complete investigation:
+
+* Sources discovered
+* Sources scraped
+* Extracted claims
+* Evidence excerpts
+* Verification status
+* Confidence scores
+* Contradictions
+* Verification tasks
+* Evidence relationships
+* Evidence graph
+
+---
+
+# 🏗️ Architecture
+
+```text
+                         USER QUESTION
+                               │
+                               ▼
+                    ┌───────────────────┐
+                    │   Anakin Search   │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │ Source Selection  │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │  Anakin Scraper   │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │ Claim Extraction  │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │    Contradiction Detection    │
+              └───────────────┬───────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ Cross-Source Claim Matching   │
+              └───────────────┬───────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │     Evidence Verification     │
+              └───────────────┬───────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │      Verification Tasks       │
+              └───────────────┬───────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ Streamlit Dashboard + Graph   │
+              └───────────────────────────────┘
+```
+
+---
+
+# 🧠 Design Philosophy
+
+ARGUS is designed around **evidence traceability** rather than answer generation.
+
+A conventional research workflow often looks like:
+
+```text
+Question → Search → Read → Answer
+```
+
+ARGUS instead builds:
+
+```text
+Question
+   ↓
+Sources
+   ↓
+Evidence
+   ↓
+Claims
+   ↓
+Cross-source comparison
+   ↓
+Verification
+   ↓
+Traceable result
+```
+
+Every major conclusion is connected to the evidence that produced it.
+
+This makes the investigation easier to inspect, audit, and extend.
+
+---
+
+# ⚙️ Technical Approach
+
+ARGUS currently uses a **deterministic evidence-processing pipeline**.
+
+The core workflow does not require an LLM.
+
+This provides:
+
+* Reproducible processing
+* Predictable matching behavior
+* Explainable verification rules
+* No dependency on LLM-generated reasoning for the core pipeline
+* Easier testing of individual investigation components
+
+The main reasoning components are implemented through deterministic algorithms and heuristics.
+
+---
+
+# 📁 Project Structure
 
 ```text
 argus/
-|
-+-- agents/
-|   +-- claim_extractor.py
-|   +-- claim_matcher.py
-|   +-- contradiction_detector.py
-|   +-- evidence_graph.py
-|   +-- investigator.py
-|   +-- investigator_loop.py
-|   +-- planner.py
-|   +-- reasoning.py
-|   +-- state.py
-|   +-- synthesizer.py
-|   +-- verification_planner.py
-|   +-- verifier.py
-|
-+-- models/
-|   +-- claims.py
-|   +-- investigation.py
-|   +-- sources.py
-|
-+-- tools/
-|   +-- anakin_search.py
-|   +-- anakin_scraper.py
-|
-+-- ui/
-|   +-- components.py
-|   +-- dashboard.py
-|   +-- evidence_graph.py
-|
-+-- run_search_test.py
-+-- run_claim_matching_test.py
-+-- run_contradiction_test.py
-+-- run_evidence_graph_test.py
-+-- run_full_pipeline_test.py
-+-- run_planner_test.py
-+-- run_verifier_test.py
-|
-+-- .env.example
-+-- .gitignore
-+-- requirements.txt
-+-- README.md
+│
+├── agents/
+│   ├── claim_extractor.py
+│   ├── claim_matcher.py
+│   ├── contradiction_detector.py
+│   ├── evidence_graph.py
+│   ├── investigator.py
+│   ├── investigator_loop.py
+│   ├── planner.py
+│   ├── reasoning.py
+│   ├── state.py
+│   ├── synthesizer.py
+│   ├── verification_planner.py
+│   └── verifier.py
+│
+├── models/
+│   ├── claims.py
+│   ├── investigation.py
+│   └── sources.py
+│
+├── tools/
+│   ├── anakin_search.py
+│   └── anakin_scraper.py
+│
+├── ui/
+│   ├── components.py
+│   ├── dashboard.py
+│   └── evidence_graph.py
+│
+├── run_search_test.py
+├── run_claim_matching_test.py
+├── run_contradiction_test.py
+├── run_evidence_graph_test.py
+├── run_full_pipeline_test.py
+├── run_planner_test.py
+├── run_verifier_test.py
+│
+├── .env.example
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## Requirements
+# 🛠️ Requirements
 
 * Python 3.10+
 * Anakin API access
@@ -240,30 +397,30 @@ argus/
 
 ---
 
-## Installation
+# 🚀 Getting Started
 
-### 1. Clone the repository
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/shashank2602s/argus.git
 cd argus
 ```
 
-### 2. Create a virtual environment
+## 2. Create a virtual environment
 
 ```bash
 python -m venv .venv
 ```
 
-### 3. Activate the virtual environment
+## 3. Activate the environment
 
-On Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-### 4. Install dependencies
+## 4. Install dependencies
 
 ```powershell
 pip install -r requirements.txt
@@ -271,19 +428,19 @@ pip install -r requirements.txt
 
 ---
 
-## Configuration
+# 🔐 Configuration
 
-Create a `.env` file in the project root based on `.env.example`.
-
-Add your Anakin API key:
+Create a `.env` file in the project root using `.env.example` as a template.
 
 ```env
 ANAKIN_API_KEY=your_api_key_here
 ```
 
-Never commit the `.env` file.
+Keep API credentials local.
 
-The repository's `.gitignore` excludes:
+**Never commit `.env` or API keys to the repository.**
+
+The repository ignores sensitive/local files including:
 
 ```text
 .env
@@ -295,7 +452,7 @@ __pycache__/
 
 ---
 
-## Running ARGUS
+# ▶️ Running ARGUS
 
 From the project root:
 
@@ -306,19 +463,19 @@ streamlit run ui\dashboard.py
 
 The Streamlit dashboard will open in your browser.
 
-Enter a research question and start an investigation.
-
-Example:
+Example investigation:
 
 ```text
 What are the major cybersecurity trends in 2026?
 ```
 
+ARGUS will then execute the investigation pipeline and display the resulting evidence.
+
 ---
 
-## Testing
+# 🧪 Testing
 
-ARGUS includes deterministic tests for its core investigation components.
+ARGUS includes deterministic tests for its core components.
 
 ### Claim Matching
 
@@ -328,10 +485,14 @@ python run_claim_matching_test.py
 
 Tests:
 
-* similar claims
-* unrelated claims
-* same-source claims
-* three independent matching sources
+* Similar claims
+* Unrelated claims
+* Same-source claims
+* Multiple independent supporting sources
+
+**Result: 4/4 PASS**
+
+---
 
 ### Contradiction Detection
 
@@ -341,9 +502,13 @@ python run_contradiction_test.py
 
 Tests:
 
-* opposing claims
-* supporting claims
-* unrelated claims
+* Contradicting claims
+* Supporting claims
+* Unrelated claims
+
+**Result: 3/3 PASS**
+
+---
 
 ### Verification
 
@@ -353,11 +518,15 @@ python run_verifier_test.py
 
 Tests:
 
-* one supporting source
-* two supporting sources
-* three supporting sources
-* no evidence
-* contradicting evidence
+* One supporting source
+* Two supporting sources
+* Three supporting sources
+* No supporting evidence
+* Contradicting evidence
+
+**Result: 5/5 PASS**
+
+---
 
 ### Evidence Graph
 
@@ -365,11 +534,25 @@ Tests:
 python run_evidence_graph_test.py
 ```
 
+Validates:
+
+* Investigation nodes
+* Claim nodes
+* Source nodes
+* Supporting relationships
+* Contradicting relationships
+
+---
+
 ### Planner
 
 ```powershell
 python run_planner_test.py
 ```
+
+Tests the research planning component.
+
+---
 
 ### Full Pipeline
 
@@ -377,114 +560,139 @@ python run_planner_test.py
 python run_full_pipeline_test.py
 ```
 
-The full pipeline test performs a live investigation using the configured Anakin services and therefore consumes API usage.
+The full pipeline test performs a live investigation using the configured Anakin services.
+
+**Note:** This test consumes Anakin API usage.
 
 ---
 
-## Test Results
+# ✅ Validation
 
-The deterministic component tests currently pass:
-
-### Claim Matching
+The deterministic component test suite currently passes:
 
 ```text
-4/4 tests PASS
+Claim Matching          4/4 PASS
+Contradiction Detection 3/3 PASS
+Verification            5/5 PASS
+Evidence Graph          PASS
 ```
 
-### Contradiction Detection
+The complete live pipeline has also been successfully executed across:
 
 ```text
-3/3 tests PASS
+Search
+  ↓
+Source Selection
+  ↓
+Scraping
+  ↓
+Claim Extraction
+  ↓
+Contradiction Detection
+  ↓
+Cross-Source Matching
+  ↓
+Evidence Verification
 ```
 
-### Verification
+---
 
-```text
-5/5 tests PASS
-```
+# ⚠️ Current Limitations
 
-The full live pipeline has also been successfully executed, completing the flow from search through scraping, claim extraction, contradiction detection, claim matching, and verification.
+ARGUS is an evolving research system.
+
+Current limitations include:
+
+### Deterministic claim extraction
+
+Claim extraction currently relies on deterministic patterns and heuristics. It may occasionally extract irrelevant factual statements from otherwise useful pages.
+
+### Deterministic semantic matching
+
+Claim similarity is based on lexical and topic-level similarity rather than a deep semantic model.
+
+### Rule-based contradiction detection
+
+The contradiction detector relies on predefined opposing-language patterns and therefore cannot identify every possible form of disagreement.
+
+### Heuristic confidence
+
+Confidence values represent evidence-strength levels and are **not calibrated statistical probabilities**.
+
+### Web accessibility
+
+Some pages may fail to scrape because of:
+
+* Dynamic rendering
+* Access restrictions
+* Anti-bot systems
+* Page structure
+* Temporary network failures
+
+These limitations are intentionally documented rather than hidden because ARGUS is designed around transparent evidence processing.
 
 ---
 
-## Design Philosophy
+# 🔮 Future Improvements
 
-ARGUS focuses on evidence traceability rather than simply generating an answer.
-
-Instead of treating a generated response as the final result, ARGUS maintains relationships between:
-
-```text
-Question
-   |
-   v
-Sources
-   |
-   v
-Evidence
-   |
-   v
-Claims
-   |
-   v
-Verification
-```
-
-This makes the investigation easier to inspect and audit.
-
----
-
-## Current Limitations
-
-ARGUS currently uses deterministic heuristics for:
-
-* claim extraction
-* claim similarity
-* topic matching
-* contradiction detection
-* confidence scoring
-
-The system does not currently use an LLM as part of its core verification pipeline.
-
-The contradiction detector relies on predefined opposing-language patterns and therefore cannot identify every possible form of contradiction.
-
-The confidence values represent heuristic evidence-strength levels rather than calibrated probabilities.
-
-Some web pages may fail to scrape depending on their structure, accessibility, or anti-bot protections.
-
----
-
-## Security
-
-API credentials are stored locally in `.env` and are excluded from Git using `.gitignore`.
-
-Do not place API keys directly in source code or commit them to the repository.
-
----
-
-## Hackathon Context
-
-ARGUS was developed for the Anakin Forge Hackathon.
-
-The project uses Anakin's web capabilities to build an investigation workflow around live web information, evidence collection, claim analysis, and verification.
-
----
-
-## Future Improvements
-
-Potential future improvements include:
+Potential future development includes:
 
 * LLM-assisted claim extraction
-* stronger semantic claim matching
-* more advanced contradiction reasoning
-* source-quality scoring
-* temporal claim tracking
-* richer evidence graph visualization
-* automatic research-plan refinement
-* additional verification agents
-* calibrated confidence scoring
+* Stronger semantic claim matching
+* Advanced contradiction reasoning
+* Source-quality and reliability scoring
+* Temporal claim tracking
+* Richer evidence graph visualization
+* Automatic research-plan refinement
+* Additional verification agents
+* Calibrated confidence scoring
+* Better handling of noisy web content
 
 ---
 
-## License
+# 🔒 Security
+
+ARGUS keeps API credentials outside the source code.
+
+API keys should be stored locally in `.env` and excluded from Git.
+
+Never:
+
+```text
+❌ hard-code API keys
+❌ commit .env
+❌ publish credentials
+```
+
+Use:
+
+```text
+.env.example
+```
+
+as the safe configuration template.
+
+---
+
+# 🏆 Hackathon Context
+
+ARGUS was developed for the **Anakin Forge Hackathon**.
+
+The project uses Anakin's live web capabilities as the data acquisition layer and builds an evidence reasoning and verification workflow on top of it.
+
+The core idea is:
+
+> **Anakin provides the live web intelligence layer. ARGUS turns that information into structured, traceable evidence.**
+
+---
+
+# 📌 Repository
+
+**GitHub:**
+https://github.com/shashank2602s/argus
+
+---
+
+# 📄 License
 
 This project is provided for hackathon and educational purposes.
